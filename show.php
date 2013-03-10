@@ -66,38 +66,44 @@ else {
 }
 
 // Load album
-$curalbum = new Album($irizConfig,$album_name, false);
+$curalbum = Album::Create($irizConfig,$album_name, false);
+
+if (is_null($curalbum)) {
+
+    sendImageText('Wrong album parameter!');
+    
+} else {
 
 // Verify object-name is part of the album
-$contentobj = $curalbum->getContent($content);
-if ($contentobj !== false) {
-    if ($contentobj->readInfo()) {
-        if ($resize == "download") {
-            // TODO hit counter increment
-            header("Content-type: " . $contentobj->getMimeType());
-            header("Content-Length: " . $contentobj->getFileSize());
-            header("Content-Disposition: attachment; filename=" . urlencode($content));
-            header("Cache-Control: private");
-            readfile($contentobj->getFullFilename());
-        } elseif ($resize == "original") {
-            header("Content-type: " . $contentobj->getMimeType());
-            header("Content-Length: " . $contentobj->getFileSize());
-            readfile($contentobj->getFullFilename());
-        } else {
-            $matched = preg_match("/^\d+x\d+$/", $resize);
-            if (!$matched) {
-                sendImageText('Wrong resize parameter!');
-                die();
+    $contentobj = $curalbum->getContent($content);
+    if ($contentobj !== false) {
+        if ($contentobj->readInfo()) {
+            if ($resize == "download") {
+                // TODO hit counter increment
+                header("Content-type: " . $contentobj->getMimeType());
+                header("Content-Length: " . $contentobj->getFileSize());
+                header("Content-Disposition: attachment; filename=" . urlencode($content));
+                header("Cache-Control: private");
+                readfile($contentobj->getFullFilename());
+            } elseif ($resize == "original") {
+                header("Content-type: " . $contentobj->getMimeType());
+                header("Content-Length: " . $contentobj->getFileSize());
+                readfile($contentobj->getFullFilename());
+            } else {
+                $matched = preg_match("/^\d+x\d+$/", $resize);
+                if (!$matched) {
+                    sendImageText('Wrong resize parameter!');
+                } else {
+                    list($resize_width, $resize_height) = explode('x', $resize);
+                    $contentobj->showResizedImage($resize_width, $resize_height);
+                }
             }
-            list($resize_width, $resize_height) = explode('x', $resize);
-            $contentobj->showResizedImage($resize_width, $resize_height);
+        } else {
+            sendImageText('Could not read info from content!');
         }
     } else {
-        sendImageText('Could not read info from content!');
-        die();
+        sendImageText('Content not found in album!');
     }
-} else {
-    sendImageText('Content not found in album!');
-    die();
 }
+die();
 ?>

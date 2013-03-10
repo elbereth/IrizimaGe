@@ -20,6 +20,10 @@
     along with IrizimaGe.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+class AlbumConfigMissingOrIncorrectException extends Exception {
+    
+}
+
 /**
  * Description of Album class
  * Object describing an Album, which is a folder which can contains sub-folders (Albums) and files (Content)
@@ -30,6 +34,29 @@
  */
 class Album {
 
+    /**
+     * Indicate the minimum configuration supported.
+     * Any version below must be converted (via the administration interface).
+     * All versions will be loaded but IrizimaGe will display a message indicating
+     * an upgrade is needed to the configuration.
+     */
+    const AlbumConfigVersion = 1;
+    
+    /**
+     * Set to true to stop checking config file during loading
+     */
+    const DebugBypassAlbumConfigCheck = true;
+    
+    /**
+     * @var array Default album configuration 
+     */
+    private $defaultconfig = array(
+        'irizimageversion' => Album::AlbumConfigVersion,
+        'adminpassword' => '',
+        'accessprotected' => false,
+        'accesspassword' => '',
+    );
+    
     /**
      * @var string Path of the album
      */
@@ -66,12 +93,37 @@ class Album {
     private $contentLoaded;
     
     /**
-     * Constructor for Album object
+     * @var array Contains all the configuration values 
+     */
+    private $albumconfigarray;
+
+    /**
+     * @var boolean Is the album config of a supported version 
+     */
+    private $albumconfigsupported;
+    
+    /**
      * @param array $irizConfig Array containing the configuration of IrizimaGe
      * @param string $dirpath Path of the album relative to the configuration item albums_path
      * @param boolean $init True = Load sub-albums and content items (default to False)
+     * @return null|\Album If there was an error creating the Album object, null is returned
      */
-    function __construct(&$irizConfig, $dirpath, $init = false) {
+    public static function Create(&$irizConfig, $dirpath, $init = false) {
+        try {
+            return new Album($irizConfig, $dirpath, $init);
+        } catch (Exception $exc) {
+            // @todo Write to the log reason of failure
+            return null;
+        }
+    }
+
+    /**
+     * Constructor for Album object (use static create function to create the object)
+     * @param array $irizConfig Array containing the configuration of IrizimaGe
+     * @param string $dirpath Path of the album relative to the configuration item albums_path
+     * @param boolean $init True = Load sub-albums and content items (default to False)
+     */ 
+    private function __construct(&$irizConfig, $dirpath, $init = false) {
         $this->config = &$irizConfig;
         // If $path end on the directory separator we strip it
         if (substr($dirpath, -1, 1) == DIRECTORY_SEPARATOR) {
@@ -82,6 +134,11 @@ class Album {
         $this->contentNum = 0;
         $this->subAlbumsNum = 0;
         $this->subAlbums = array();
+        
+        // Load configuration of the album
+        if (!$this->loadConfig()) {
+            throw new AlbumConfigMissingOrIncorrectException();
+        }
 
         if ($init) {
             $this->loadSubAlbums();
@@ -91,6 +148,70 @@ class Album {
         }
     }
 
+    /**
+     * @return string Full path to the config file of the album
+     */
+    private function getConfigFile() {
+        return $this->getFullPath().DIRECTORY_SEPARATOR.'config_album.inc.php';
+    }
+    
+    /**
+     * Returns a string ready to use with crypt() with random salt
+     * @return string Salt for crypt
+     */
+    private function getNewSalt() {
+      
+        // Get new salt (for crypt)
+        return '$6$rounds=5000$'.trim(strtr(base64_encode(mcrypt_create_iv(16, MCRYPT_DEV_URANDOM)), '+', '.'),'=').'$';
+
+        // @todo Detect is mcrypt module is not installed & fallback to mt_reand()
+    }
+    
+    /**
+     * This function loads the configuration from the config_album.inc.php of the
+     * folder. Defaults configuration & save it to the file is not found.
+     */
+    private function loadConfig() {
+        
+        // Return value is by default false (this is not an IrizimaGe album)
+        $albumiscorrect = false;
+        
+        // If the file exists & is readable by current user
+        if (file_exists($this->getConfigFile()) && is_readable($this->getConfigFile())) {
+            // Retrieve content of the file
+            $serializedconfig = file_get_contents($this->getConfigFile());
+
+            // Initial sanity check (should start with start marker of PHP and end with end marker
+            if ((substr($serializedconfig, -3) == " ?>") &&
+                (substr($serializedconfig, 0, 6) == "<\x3Fphp ")) {
+                
+                // Initial sanity check passed, unserialize the configuration
+                $serializedconfig = substr($serializedconfig, 6, strlen($serializedconfig) - 9);
+                $this->albumconfigarray = unserialize($serializedconfig);
+                unset($serializedconfig);
+
+                // Check this is an IrizimaGe album configuration
+                if ((Album::DebugBypassAlbumConfigCheck) ||
+                   (array_key_exists('irizimageversion',$this->albumconfigarray) &&
+                       is_int($configarray['irizimageversion']))) {
+                    
+                    // Check the version is supported
+                    $this->albumconfigsupported = ($this->albumconfigarray['irizimageversion'] > Album::AlbumConfigVersion);
+                    
+                    // Check the configuration contains all expected entries
+                    $configkeys = array_keys($this->albumconfigarray);
+                    $defaultconfigkeys = array_keys($this->defaultconfig);
+                    $configkeysdiff = array_diff($configkeys,$defaultconfigkeys);
+                    $albumiscorrect = Album::DebugBypassAlbumConfigCheck || (count($configkeysdiff) == 0);
+                    
+                }
+            }
+        }
+
+        return $albumiscorrect;
+        
+    }
+    
     /**
      * Empty the subAlbums items
      */
@@ -110,8 +231,11 @@ class Album {
         $this->resetSubAlbums();
         $subalbums = getSubdirs($this->getFullPath());
         foreach ($subalbums as $newpath) {
-            $this->subAlbums[] = new Album($this->config, $this->path . DIRECTORY_SEPARATOR . $newpath);
-            $this->subAlbumsNum++;
+            $newsubalbum = Album::Create($this->config, $this->path . DIRECTORY_SEPARATOR . $newpath);
+            if (!is_null($newsubalbum)) {
+              $this->subAlbums[] = $newsubalbum;
+              $this->subAlbumsNum++;
+            }
         }
     }
 

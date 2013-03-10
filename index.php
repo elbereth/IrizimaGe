@@ -62,7 +62,7 @@
       $page = 1;
   }
   
-  $curalbum = new Album($irizConfig,$album,true);
+  $curalbum = Album::Create($irizConfig,$album,true);
   
   echo "Current album: ".$curalbum->getFullPath()."<br/>\n";
   echo "Sub-albums present: ".$curalbum->isSubAlbums()."<br/>\n";

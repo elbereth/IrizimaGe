@@ -175,7 +175,7 @@ class Content {
         $im->scaleImage($resize_width, $resize_height, true);
         $im->setImageFormat('jpeg');
         $im->setImageCompressionQuality(80);
-        return $im;
+        return $im->getImageBlob();
     }
 
     public function showResizedImage($width, $height) {
@@ -191,25 +191,18 @@ class Content {
                 ob_clean();
                 flush();
                 readfile($cachedir . DIRECTORY_SEPARATOR . $this->filename);
-                die();
             } else {
+                // @todo Add error checked for each step
                 $resizedimage = $this->resizeImage($width, $height);
-                $resizedimage->writeImage($cachedir . DIRECTORY_SEPARATOR . $this->filename);
-                header("Content-type: image/jpeg");
+                file_put_contents($cachedir . DIRECTORY_SEPARATOR . $this->filename, $resizedimage);
                 header("Content-Length: " . strlen($resizedimage));
                 echo $resizedimage;
-                $resizedimage->clear;
-                $resizedimage->destroy;
-                die();
             }
         } else {
             $resizedimage = $this->resizeImage($width, $height);
             header("Content-type: image/jpeg");
             header("Content-Length: " . strlen($resizedimage));
             echo $resizedimage;
-            $resizedimage->clear;
-            $resizedimage->destroy;
-            die();
         }
     }
 
