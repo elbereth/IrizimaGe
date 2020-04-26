@@ -1,3 +1,4 @@
 /libs/Smarty/
 /vendor/
 composer.lock
+/.idea/
