@@ -26,6 +26,9 @@ if (!defined('IRIZIMAGE') || (IRIZIMAGE !== TRUE)) {
     die('Use <a href="index.php">Index page</a>.'."\n");
 }
 
+// Include external libraries (from composer)
+require __DIR__ . '/vendor/autoload.php';
+
 // Include needed libraries & classes
 require_once 'libs/common.inc.php';
 require_once 'libs/Album.class.php';
