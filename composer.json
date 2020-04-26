@@ -1,0 +1,15 @@
+{
+  "name": "elbereth/irizimage",
+  "description": "Image Gallery inspired by Yappa-NG",
+  "minimum-stability": "dev",
+  "license": "GPL-3.0-only",
+  "authors": [
+    {
+      "name": "Alexandre Devilliers",
+      "email": "elbereth@dashninja.pl"
+    }
+  ],
+  "require": {
+    "smarty/smarty": "^3.1"
+  }
+}
