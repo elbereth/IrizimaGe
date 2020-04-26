@@ -83,7 +83,7 @@ class Album {
     private $contentNum;
     
     /**
-     * @var array Pointer to the IrizimaGe configuration
+     * @var \Config Pointer to the IrizimaGe configuration object
      */
     private $config;
 
@@ -103,12 +103,13 @@ class Album {
     private $albumconfigsupported;
     
     /**
+     * Load an existing album
      * @param array $irizConfig Array containing the configuration of IrizimaGe
      * @param string $dirpath Path of the album relative to the configuration item albums_path
      * @param boolean $init True = Load sub-albums and content items (default to False)
      * @return null|\Album If there was an error creating the Album object, null is returned
      */
-    public static function Create(&$irizConfig, $dirpath, $init = false) {
+    public static function Load(&$irizConfig, $dirpath, $init = false) {
         try {
             return new Album($irizConfig, $dirpath, $init);
         } catch (Exception $exc) {
@@ -117,9 +118,13 @@ class Album {
         }
     }
 
+    public static function Create() {
+
+    }
+
     /**
      * Constructor for Album object (use static create function to create the object)
-     * @param array $irizConfig Array containing the configuration of IrizimaGe
+     * @param \Config $irizConfig Array containing the configuration of IrizimaGe
      * @param string $dirpath Path of the album relative to the configuration item albums_path
      * @param boolean $init True = Load sub-albums and content items (default to False)
      */ 
@@ -170,6 +175,7 @@ class Album {
     /**
      * This function loads the configuration from the config_album.inc.php of the
      * folder. Defaults configuration & save it to the file is not found.
+     * @return boolean
      */
     private function loadConfig() {
         
@@ -213,6 +219,34 @@ class Album {
     }
     
     /**
+     * Returns the path to the _data folder of the album
+     * Create the folder if it do not exists
+     * @return boolean|string Path to the _data folder of the Album (FALSE if not found and could not create)
+     */
+    private function getDataPath() {
+       if (!is_dir($this->getDataPath())) {
+          if (mkdir($this->getDataPath()) === FALSE) {
+              return false;
+          }
+       }
+       return $this->getFullPath().DIRECTORY_SEPARATOR.'_data';
+    }
+
+    /**
+     *
+     * @return boolean
+     */
+    private function loadData() {
+        $dataloaded = false;
+        $datapath = $this->getDataPath();
+        if ($datapath !== FALSE) {
+
+
+        }
+        return $dataloaded;
+    }
+
+    /**
      * Empty the subAlbums items
      */
     private function resetSubAlbums() {
@@ -231,7 +265,7 @@ class Album {
         $this->resetSubAlbums();
         $subalbums = getSubdirs($this->getFullPath());
         foreach ($subalbums as $newpath) {
-            $newsubalbum = Album::Create($this->config, $this->path . DIRECTORY_SEPARATOR . $newpath);
+            $newsubalbum = Album::Load($this->config, $this->path . DIRECTORY_SEPARATOR . $newpath);
             if (!is_null($newsubalbum)) {
               $this->subAlbums[] = $newsubalbum;
               $this->subAlbumsNum++;
@@ -336,7 +370,7 @@ class Album {
      * @return string Full path of the album (to be used for absolute file open)
      */
     public function getFullPath() {
-        return $this->config['albums_path'].$this->path;
+        return $this->config->getValue('albums_path').$this->path;
     }
     
     /**
@@ -346,15 +380,15 @@ class Album {
      */
     public function getCachePath($cachesize) {
         $result = false;
-        if (in_array($cachesize,$this->config['cache_sizes'],true)) {
-            if (!is_dir($this->config['cache_path'].$this->path.DIRECTORY_SEPARATOR.'_'.$cachesize)) {
-                $result = mkdir($this->config['cache_path'].$this->path.DIRECTORY_SEPARATOR.'_'.$cachesize,0755,true);
+        if (in_array($cachesize,$this->config->getValue('cache_sizes'),true)) {
+            if (!is_dir($this->config->getValue('cache_path').$this->path.DIRECTORY_SEPARATOR.'_'.$cachesize)) {
+                $result = mkdir($this->config->getValue('cache_path').$this->path.DIRECTORY_SEPARATOR.'_'.$cachesize,0755,true);
                 if ($result) {
-                    $result = $this->config['cache_path'].$this->path.DIRECTORY_SEPARATOR.'_'.$cachesize;
+                    $result = $this->config->getValue('cache_path').$this->path.DIRECTORY_SEPARATOR.'_'.$cachesize;
                 }
             }
             else {
-                $result = $this->config['cache_path'].$this->path.DIRECTORY_SEPARATOR.'_'.$cachesize;
+                $result = $this->config->getValue('cache_path').$this->path.DIRECTORY_SEPARATOR.'_'.$cachesize;
             }
         }
         return $result;

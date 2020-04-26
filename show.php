@@ -20,18 +20,14 @@
     along with IrizimaGe.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+// Define the IRIZIMAGE constant to indicate we are in an allowed script
+define('IRIZIMAGE', TRUE);
+
 // Include libraries
-require_once 'libs/common.inc.php';
-require_once 'libs/Album.class.php';
-require_once 'libs/Content.class.php';
+require_once 'irizimage.inc.php';
 
-// Include configuration
-require_once 'config.inc.php';
-
-// Check path exists
-if (!(isset($irizConfig['albums_path']) && is_dir($irizConfig['albums_path']))) {
-    // TODO Better error handling
-    sendImageText("ERROR\nUndefined or invalid albums path\n".$irizConfig['albums_path']);
+if (!$config->isReady($message)) {
+    sendImageText("ERROR:\nConfiguration is not ready:\n$message");
     die();
 }
 
